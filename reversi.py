@@ -28,7 +28,7 @@ _TTTB = namedtuple("TicTacToeBoard", "tup turn winner terminal")
 
 # Inheriting from a namedtuple is convenient because it makes the class
 # immutable and predefines __init__, __repr__, __hash__, __eq__, and others
-class TicTacToeBoard(_TTTB, Node):
+class ReversiBoard(_TTTB, Node):
     def find_children(board):
         #if board.terminal:  # If the game is finished then no moves can be made
         #    return set()
@@ -39,9 +39,10 @@ class TicTacToeBoard(_TTTB, Node):
         children = set()
         for i in range(8):
             for j in range(8):
-               new = board.make_move(i, j)
-               if new is not None:
-                   children.add(new)
+                if board.tup[i][j] is None:
+                    new = board.make_move(i, j)
+                    if new is not None:
+                        children.add(new)
         return children
 
     def find_random_child(board):
@@ -49,7 +50,13 @@ class TicTacToeBoard(_TTTB, Node):
             return None  # If the game is finished then no moves can be made
         empty_spots = [i for i, value in enumerate(board.tup) if value is None]
         #return board.make_move(choice(empty_spots))
-        return sample(board.find_children(), 1)[0]
+        children = board.find_children()
+        if children:
+            return sample(children, 1)[0]
+        return ReversiBoard(board.tup, not board.turn, board.winner, board.terminal)
+        #print('==============\n',children)
+        #print('==============\n', board)
+        #raise Exception("I'm s'posed to pass.")
 
     def reward(board):
         if not board.terminal:
@@ -105,7 +112,7 @@ class TicTacToeBoard(_TTTB, Node):
         winner = _find_winner(new)
         is_terminal = winner is not None
         new = tuple(tuple(row) for row in new)
-        return TicTacToeBoard(new, turn, winner, is_terminal) if valid else None
+        return ReversiBoard(new, turn, winner, is_terminal) if valid else None
 
     def __str__(board):
         to_char = lambda v: ("X" if v is True else ("O" if v is False else " "))
@@ -116,7 +123,7 @@ class TicTacToeBoard(_TTTB, Node):
         )
 
     def __repr__(board):
-        to_char = lambda v: ("X" if v is True else ("O" if v is False else " "))
+        to_char = lambda v: ("T" if v is True else ("F" if v is False else " "))
         return (
             "\n  0 1 2 3 4 5 6 7 \n"
             + "\n".join(str(i) + " " + " ".join(map(to_char, row)) for i, row in enumerate(board.tup))
@@ -129,26 +136,72 @@ def play_game():
     global board
     print("(You are X)")
     tree = MCTS()
-    board = new_tic_tac_toe_board()
+    board = new_reversi_board()
     print(board)
-    while True:
-        row_col = input("enter row,col: ")
-        row, col = map(int, row_col.split(","))
-        if row<0 or row>=8 or col<0 or col>=8 or board.tup[row][col] is not None: raise RuntimeError("Invalid move")
-        board = board.make_move(row, col)
-        if board is None:
-            raise RuntimeError("Nothing to flip")
-        print(board)
-        if board.terminal:
-            break
+    pass1 = pass2 = False
+    while not(pass1 and pass2):
+        ######### Human's turn #######
+        #children = board.find_children()
+        #if children:
+        #    invalid = True
+        #    while invalid:
+        #        invalid = False
+        #        row_col = input("enter row,col: ")
+        #        try:
+        #            row, col = map(int, row_col.split(","))
+        #        except ValueError:
+        #            print('\tplease enter 2 comma-separated numbers')
+        #            invalid = True
+        #            continue
+        #        if row<0 or row>=8 or col<0 or col>=8 or board.tup[row][col] is not None: 
+        #            print('\tcell must be empty')
+        #            invalid = True
+        #            continue
+        #        board_ = board.make_move(row, col)
+        #        if board_ is None:
+        #            print('\tsomething must flip')
+        #            invalid = True
+        #    board = board_
+        #else:
+        #    print("You have no available moves")
+
+        #print(board)
+        #if board.terminal:
+        #    break
+
+        ######## Computer's turn #######
         # You can train as you go, or only at the beginning.
         # Here, we train as we go, doing fifty rollouts each turn.
-        for _ in range(5):
-            tree.do_rollout(board)
-        board = tree.choose(board)
-        print(board)
+        if board.find_children():
+            pass1 = False
+            for _ in range(2):
+                tree.do_rollout(board)
+            board = tree.choose(board)
+            print(board)
+        else:
+            pass1 = True
+            board = ReversiBoard(board.tup, not board.turn, board.winner, board.terminal)
+            print("rama-rama has to pass, it's your turn\n")
         if board.terminal:
             break
+
+        if board.find_children():
+            pass2 = False
+            for _ in range(2):
+                tree.do_rollout(board)
+            board = tree.choose(board)
+            print(board)
+        else:
+            pass2 = True
+            board = ReversiBoard(board.tup, not board.turn, board.winner, board.terminal)
+            print("rama-rama2 has to pass, it's your turn\n")
+        if board.terminal:
+            break
+    O = sum(1 for row in board.tup for cell in row if cell is False)
+    X = sum(1 for row in board.tup for cell in row if cell is True)
+    print(f"X has {X:2d} points")
+    print(f"O has {O:2d} points")
+    print(f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
 
 
 #def _winning_combos():
@@ -169,13 +222,13 @@ def _find_winner(tup):
     return count[1] > count[0]   # True needs to get more
 
 
-def new_tic_tac_toe_board():
+def new_reversi_board():
     tup = [[None for j in range(8)] for i in range(8)]
     tup[3][3] = tup[4][4] = True
     tup[3][4] = tup[4][3] = False
-    tup = [list(row) for row in tup]
-    return TicTacToeBoard(tup=tup,
-                          turn=True, winner=None, terminal=False)
+    tup = tuple(tuple(row) for row in tup)
+    return ReversiBoard(tup=tup,
+                        turn=True, winner=None, terminal=False)
 
 
 if __name__ == "__main__":
