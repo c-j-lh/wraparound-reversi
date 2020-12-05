@@ -23,12 +23,13 @@ from collections import namedtuple
 from random import choice, sample
 from copy import deepcopy
 from monte_carlo_tree_search import MCTS, Node
+from abc import ABC, abstractmethod
 
 _TTTB = namedtuple("TicTacToeBoard", "tup turn winner terminal")
 
 # Inheriting from a namedtuple is convenient because it makes the class
 # immutable and predefines __init__, __repr__, __hash__, __eq__, and others
-class ReversiBoard(_TTTB, Node):
+class ReversiState(_TTTB, Node):
     def find_children(board):
         #if board.terminal:  # If the game is finished then no moves can be made
         #    return set()
@@ -53,24 +54,31 @@ class ReversiBoard(_TTTB, Node):
         children = board.find_children()
         if children:
             return sample(children, 1)[0]
-        return ReversiBoard(board.tup, not board.turn, board.winner, board.terminal)
+        return ReversiState(board.tup, not board.turn, board.winner, board.terminal)
         #print('==============\n',children)
         #print('==============\n', board)
         #raise Exception("I'm s'posed to pass.")
 
     def reward(board):
-        if not board.terminal:
-           raise RuntimeError(f"reward called on nonterminal board {board}")
-        if board.winner is board.turn:
-            # It's your turn and you've already won. Should be impossible.
-            #raise RuntimeError(f"reward called on unreachable board {board}")
-            return 1
-        if board.turn is (not board.winner):
-            return 0  # Your opponent has just won. Bad.
-        if board.winner is None:
-            return 0.5  # Board is a tie
-        # The winner is neither True, False, nor None
-        raise RuntimeError(f"board has unknown winner type {board.winner}")
+        #if not board.terminal:
+        #   raise RuntimeError(f"reward called on nonterminal board {board}")
+        #if board.winner is board.turn:
+        #    # It's your turn and you've already won. Should be impossible.
+        #    #raise RuntimeError(f"reward called on unreachable board {board}")
+        #    return 1
+        #if board.turn is (not board.winner):
+        #    return 0  # Your opponent has just won. Bad.
+        #if board.winner is None:
+        #    return 0.5  # Board is a tie
+        ## The winner is neither True, False, nor None
+        #raise RuntimeError(f"board has unknown winner type {board.winner}")
+        count = [0, 0]
+        for i in range(8):
+            for j in range(8):
+                #if board.tup[i][j] is None: return None  # not finished yet
+                if not board.tup[i][j] is None:
+                    count[board.tup[i][j]] += 1 
+        return count[1] - count[0]   # True needs to get more
 
     def is_terminal(board):
         return board.terminal
@@ -112,7 +120,7 @@ class ReversiBoard(_TTTB, Node):
         winner = _find_winner(new)
         is_terminal = winner is not None
         new = tuple(tuple(row) for row in new)
-        return ReversiBoard(new, turn, winner, is_terminal) if valid else None
+        return ReversiState(new, turn, winner, is_terminal) if valid else None
 
     def __str__(board):
         to_char = lambda v: ("X" if v is True else ("O" if v is False else " "))
@@ -132,85 +140,89 @@ class ReversiBoard(_TTTB, Node):
         )
 
 
-def play_game():
-    global board
-    print("(You are X)")
+class AI:
+    def __init__(self, name:str):
+        self.name:str = name
+
+    @abstractmethod
+    def play(self, board:ReversiState) -> ReversiState: pass
+
+class MCTSAI(AI):
     tree = MCTS()
-    board = new_reversi_board()
-    print(board)
-    pass1 = pass2 = False
-    while not(pass1 and pass2):
-        ######### Human's turn #######
-        #children = board.find_children()
-        #if children:
-        #    invalid = True
-        #    while invalid:
-        #        invalid = False
-        #        row_col = input("enter row,col: ")
-        #        try:
-        #            row, col = map(int, row_col.split(","))
-        #        except ValueError:
-        #            print('\tplease enter 2 comma-separated numbers')
-        #            invalid = True
-        #            continue
-        #        if row<0 or row>=8 or col<0 or col>=8 or board.tup[row][col] is not None: 
-        #            print('\tcell must be empty')
-        #            invalid = True
-        #            continue
-        #        board_ = board.make_move(row, col)
-        #        if board_ is None:
-        #            print('\tsomething must flip')
-        #            invalid = True
-        #    board = board_
-        #else:
-        #    print("You have no available moves")
+    def __init__(self, name:str, nRollout:int=5):
+        self.nRollout:int = nRollout
+        super().__init__(name)
 
-        #print(board)
-        #if board.terminal:
-        #    break
+    def play(self, board: ReversiState):
+        for _ in range(self.nRollout): self.tree.do_rollout(board)
+        return self.tree.choose(board)
 
-        ######## Computer's turn #######
-        # You can train as you go, or only at the beginning.
-        # Here, we train as we go, doing fifty rollouts each turn.
+class Human(AI):
+    def play(self, board: ReversiState):
+        invalid = True
+        while invalid:
+            invalid = False
+            row_col = input("enter row,col: ")
+            try:
+                row, col = map(int, row_col.split(","))
+            except ValueError:
+                print('\tplease enter 2 comma-separated numbers')
+                invalid = True
+                continue
+            if row<0 or row>=8 or col<0 or col>=8 or board.tup[row][col] is not None: 
+                print('\tcell must be empty')
+                invalid = True
+                continue
+            board_ = board.make_move(row, col)
+            if board_ is None:
+                print('\tsomething must flip')
+                invalid = True
+        return board_
+
+class Greedy(AI):
+    def play(self, board: ReversiState):
+        children = list(board.find_children())
+        children.sort(reverse=board.turn, key=lambda board: board.reward())
+        #print(*[(child, child.reward()) for child in children])
+        return children[0]
+
+def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=True):
+    global board
+    board = new_reversi_state()
+    if noisy: print(board)
+    passX = passO = False
+    while not(passX and passO):
+        # X's turn
         if board.find_children():
-            pass1 = False
-            for _ in range(2):
-                tree.do_rollout(board)
-            board = tree.choose(board)
-            print(board)
+            passX = False
+            board = agentX.play(board)
+            if noisy: print(board)
         else:
-            pass1 = True
-            board = ReversiBoard(board.tup, not board.turn, board.winner, board.terminal)
-            print("rama-rama has to pass, it's your turn\n")
+            passX = True
+            board = ReversiState(board.tup, not board.turn, board.winner, board.terminal)
+            if noisy: print(f"{agentX.name} has to pass, it's your turn\n")
         if board.terminal:
             break
 
+        # O's turn
         if board.find_children():
-            pass2 = False
-            for _ in range(2):
-                tree.do_rollout(board)
-            board = tree.choose(board)
-            print(board)
+            passO = False
+            board = agentO.play(board)
+            if noisy: print(board)
         else:
-            pass2 = True
-            board = ReversiBoard(board.tup, not board.turn, board.winner, board.terminal)
-            print("rama-rama2 has to pass, it's your turn\n")
+            passO = True
+            board = ReversiState(board.tup, not board.turn, board.winner, board.terminal)
+            if noisy: print(f"{agentO.name} has to pass, it's your turn\n")
         if board.terminal:
             break
+
     O = sum(1 for row in board.tup for cell in row if cell is False)
     X = sum(1 for row in board.tup for cell in row if cell is True)
-    print(f"X has {X:2d} points")
-    print(f"O has {O:2d} points")
-    print(f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
-
-
-#def _winning_combos():
-#    for start in range(0, 9, 3):  # three in a row
-#        yield (start, start + 1, start + 2)
-#    for start in range(3):  # three in a column
-#        yield (start, start + 3, start + 6)
-#    yield (0, 4, 8)  # down-right diagonal
-#    yield (2, 4, 6)  # down-left diagonal
+    if noisy:
+        print(f"X has {X:2d} points")
+        print(f"O has {O:2d} points")
+        print(f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
+    return X-O
 
 
 def _find_winner(tup):
@@ -222,14 +234,14 @@ def _find_winner(tup):
     return count[1] > count[0]   # True needs to get more
 
 
-def new_reversi_board():
+def new_reversi_state():
     tup = [[None for j in range(8)] for i in range(8)]
     tup[3][3] = tup[4][4] = True
     tup[3][4] = tup[4][3] = False
     tup = tuple(tuple(row) for row in tup)
-    return ReversiBoard(tup=tup,
+    return ReversiState(tup=tup,
                         turn=True, winner=None, terminal=False)
 
 
 if __name__ == "__main__":
-    play_game()
+    play_game(MCTSAI("Bot X"), Greedy("Bot O"))

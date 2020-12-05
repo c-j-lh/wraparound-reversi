@@ -69,7 +69,7 @@ class MCTS:
             global node2; node2 = node
             if node.is_terminal():
                 reward = node.reward()
-                return 1 - reward if invert_reward else reward
+                return - reward if invert_reward else reward
             node = node.find_random_child()
             invert_reward = not invert_reward
 
