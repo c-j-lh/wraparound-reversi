@@ -18,3 +18,5 @@ R-MC MC-R
  -19   -8
  -15   -4
 MC > G2 > G > R
+
+MC (old)
