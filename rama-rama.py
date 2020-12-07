@@ -29,48 +29,97 @@ async def on_ready():
     print('Guild members:\n', ', '.join(member.name for member in guild.members))
 
 
-    O = sum(1 for row in state.board for cell in row if cell is False)
-    X = sum(1 for row in state.board for cell in row if cell is True)
-    if noisy:
-        print(f"X has {X:2d} points")
-        print(f"O has {O:2d} points")
-        print(f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
-    return X-O
 
-state = new_reversi_state()
 noisy = True
-if noisy: print(state)
-passX = passO = False
-agentO = Greedy('Bot O')
-player = None
 
-count = 0
+agentO = Greedy('Bot O')
+players = [None ,None]
+state = passX = passO = None
+history = []
+# ignoring passO for now
 
 @client.event
 async def on_message(message):
+    global state
     if message.author == client.user:
         return
 
-    if message.content[:2] == '::':
-        inp = message.content[2:]
-        global count
+    if message.content[:2] == ';;':
+        inp = message.content[2:].lower()
         if inp == 'start':
-            count = 0
-            await message.channel.send('game restarted')
+            state = new_reversi_state()
+            history = [state]
+            passX = passO = False
+            player = None  # who sent this?
+            await message.channel.send('game restarted'
+                + "```" + str(state) + "```")
+            players[True] = message.author
+            print(message.author)
             return
 
+        if inp == 'undo':
+            history = history[:-2]
+            state = history[-1]
+            passX = passO = False
+            return
+
+        if state is None:
+            await message.channel.send('No game is ongoing')
+            return
+        if message.author != players[state.turn]:
+            await message.channel.send('Not your turn')
+        #if not state.turn is True:
+        #    await message.channel.send('Not your turn (you are X)')
+        #    return
+
+        print('here1')
         try:
-            print('befro')
-            inp = int(inp)
-            print('past')
+            row, col = map(int, inp.split(","))
         except ValueError:
-            print('not int')
+            await message.channel.send('\tplease enter 2 comma-separated numbers')
             return
-        count += inp
-        await message.channel.send(f"count is now {count}")
+        print('here2')
+        if row<0 or row>=8 or col<0 or col>=8 or state.board[row][col] is not None: 
+            await message.channel.send('\tcell must be empty')
+            return
+        print('here3', row, col)
+        state_ = state.make_move(row, col)
+        if state_ is None:
+            await message.channel.send('\tsomething must flip')
+            return
+        print('here4', state_)
+        state = state_
+        history.append(state)
+        print('here4.5', noisy)
+        if noisy:
+            print('here5', state_)
+            await message.channel.send("```" + str(state) + "```")
+        if state.terminal:
+            state = passX = passO = None
+            O = sum(1 for row in state.board for cell in row if cell is False)
+            X = sum(1 for row in state.board for cell in row if cell is True)
+            await message.channel.send(f"X has {X:2d} points"
+                + f"O has {O:2d} points"
+                + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
 
-        count += 5
-        await message.channel.send(f"comp played. count is now {count}")
+        # bot O's turn
+        if state.find_children():
+            passX = False
+            state = agentO.play(state)
+            await message.channel.send("```" + str(state) + "```")
+        else:
+            passX = True
+            state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
+            await message.channel.send(f"{agentO.name} has to pass, it's your turn\n")
+        history.append(state)
+        if state.terminal:
+            state = passX = passO = None
+            O = sum(1 for row in state.board for cell in row if cell is False)
+            X = sum(1 for row in state.board for cell in row if cell is True)
+            message.channel.send(f"X has {X:2d} points"
+                + f"O has {O:2d} points"
+                + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
+                
         ## X's turn
         #if state.find_children():
         #    passX = False
@@ -97,7 +146,6 @@ async def on_message(message):
         #    state = new_reversi_state()
         #    passX = passO = False
 
-        await message.channel.send("Ok. Starting...")
     elif message.content == 'raise-exception':
         raise discord.DiscordException
 

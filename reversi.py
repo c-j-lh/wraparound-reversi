@@ -204,6 +204,7 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
     state = new_reversi_state()
     if noisy: print(state)
     passX = passO = False
+    history = [state]
     while not(passX and passO):
         # X's turn
         if state.find_children():
@@ -214,6 +215,7 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
             passX = True
             state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
             if noisy: print(f"{agentX.name} has to pass, it's your turn\n")
+        history.append(state)
         if state.terminal:
             break
 
@@ -226,6 +228,7 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
             passO = True
             state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
             if noisy: print(f"{agentO.name} has to pass, it's your turn\n")
+        history.append(state)
         if state.terminal:
             break
 
