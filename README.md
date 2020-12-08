@@ -9,3 +9,9 @@ For example, above, X plays at (row, column) = (7,0), flipping (0,1) using the d
 
 Run reversi.py to play.
 
+Run 
+```bash
+$ pip install -U discord.py
+$ pip install -U python-dotenv
+``` 
+and rama-rama.py to start the discord bot.
