@@ -48,6 +48,7 @@ async def on_message(message):
     if message.content[:2] == ';;':
         inp = message.content[2:].lower()
         if inp == 'start':
+            inp = inp[5:].split()
             state = new_reversi_state()
             history = [state]
             passX = passO = False
@@ -75,8 +76,9 @@ async def on_message(message):
         if state is None:
             await message.channel.send('No game is ongoing')
             return
-        if message.author != players[state.turn]:
-            await message.channel.send('Not your turn')
+        #if message.author != players[state.turn]:
+        #    await message.channel.send('Not your turn')
+        #    return
         #if not state.turn is True:
         #    await message.channel.send('Not your turn (you are X)')
         #    return
@@ -112,22 +114,22 @@ async def on_message(message):
                 + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
 
         # bot O's turn
-        if state.find_children():
-            passX = False
-            state = agentO.play(state)
-            messages.append(await message.channel.send("```" + str(state) + "```"))
-        else:
-            passX = True
-            state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
-            messages.append(await message.channel.send(f"{agentO.name} has to pass, it's your turn\n"))
-        history.append(state)
-        if state.terminal:
-            state = passX = passO = None
-            O = sum(1 for row in state.board for cell in row if cell is False)
-            X = sum(1 for row in state.board for cell in row if cell is True)
-            message.channel.send(f"X has {X:2d} points"
-                + f"O has {O:2d} points"
-                + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
+        #if state.find_children():
+        #    passX = False
+        #    state = agentO.play(state)
+        #    messages.append(await message.channel.send("```" + str(state) + "```"))
+        #else:
+        #    passX = True
+        #    state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
+        #    messages.append(await message.channel.send(f"{agentO.name} has to pass, it's your turn\n"))
+        #history.append(state)
+        #if state.terminal:
+        #    state = passX = passO = None
+        #    O = sum(1 for row in state.board for cell in row if cell is False)
+        #    X = sum(1 for row in state.board for cell in row if cell is True)
+        #    message.channel.send(f"X has {X:2d} points"
+        #        + f"O has {O:2d} points"
+        #        + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
                 
     elif message.content == 'raise-exception':
         raise discord.DiscordException
