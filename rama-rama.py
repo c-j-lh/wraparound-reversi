@@ -36,27 +36,38 @@ agentO = Greedy('Bot O')
 players = [None ,None]
 state = passX = passO = None
 history = []
+messages = []
 # ignoring passO for now
 
 @client.event
 async def on_message(message):
-    global state
+    global agentO, players, state, passX, passO, history, messages
     if message.author == client.user:
         return
 
     if message.content[:2] == ';;':
-        inp = message.content[2:]
+        inp = message.content[2:].lower()
         if inp == 'start':
             state = new_reversi_state()
             history = [state]
             passX = passO = False
             player = None  # who sent this?
-            await message.channel.send('game restarted'
-                + "```" + str(state) + "```")
+            messages.append(await message.channel.send('game restarted'
+                + "```" + str(state) + "```"))
             players[True] = message.author
             print(message.author)
             return
 
+        if inp == 'undo':
+            if len(messages) > 2:
+                history = history[:-2]
+                state = history[-1]
+                passX = passO = False
+                print('deleting')
+                client.delete_message(messages[-1])
+                client.delete_message(messages[-2])
+                messages = messages[:-2]
+                return
 
         if state is None:
             await message.channel.send('No game is ongoing')
@@ -67,22 +78,28 @@ async def on_message(message):
         #    await message.channel.send('Not your turn (you are X)')
         #    return
 
+        print('here1')
         try:
             row, col = map(int, inp.split(","))
         except ValueError:
             await message.channel.send('\tplease enter 2 comma-separated numbers')
             return
+        print('here2')
         if row<0 or row>=8 or col<0 or col>=8 or state.board[row][col] is not None: 
             await message.channel.send('\tcell must be empty')
             return
+        print('here3', row, col)
         state_ = state.make_move(row, col)
-        print(state_)
         if state_ is None:
             await message.channel.send('\tsomething must flip')
             return
+        print('here4', state_)
         state = state_
+        history.append(state)
+        print('here4.5', noisy)
         if noisy:
-            await message.channel.send("```" + str(state) + "```")
+            print('here5', state_)
+            await messages.append(message.channel.send("```" + str(state) + "```"))
         if state.terminal:
             state = passX = passO = None
             O = sum(1 for row in state.board for cell in row if cell is False)
@@ -95,11 +112,12 @@ async def on_message(message):
         if state.find_children():
             passX = False
             state = agentO.play(state)
-            await message.channel.send("```" + str(state) + "```")
+            await messages.append(message.channel.send("```" + str(state) + "```"))
         else:
             passX = True
             state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
-            message.channel.send(f"{agentO.name} has to pass, it's your turn\n")
+            await messages.append(message.channel.send(f"{agentO.name} has to pass, it's your turn\n"))
+        history.append(state)
         if state.terminal:
             state = passX = passO = None
             O = sum(1 for row in state.board for cell in row if cell is False)
