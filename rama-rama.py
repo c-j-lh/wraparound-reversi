@@ -64,10 +64,13 @@ async def on_message(message):
                 state = history[-1]
                 passX = passO = False
                 print('deleting')
-                client.delete_message(messages[-1])
-                client.delete_message(messages[-2])
+                await message.channel.delete_messages(messages[-2:])
+                #await client.delete_message(messages[-1])
+                #await client.delete_message(messages[-2])
                 messages = messages[:-2]
                 return
+            else:
+                await message.channel.send('No moves to undo!')
 
         if state is None:
             await message.channel.send('No game is ongoing')
@@ -99,7 +102,7 @@ async def on_message(message):
         print('here4.5', noisy)
         if noisy:
             print('here5', state_)
-            await messages.append(message.channel.send("```" + str(state) + "```"))
+            messages.append(await message.channel.send("```" + str(state) + "```"))
         if state.terminal:
             state = passX = passO = None
             O = sum(1 for row in state.board for cell in row if cell is False)
@@ -112,11 +115,11 @@ async def on_message(message):
         if state.find_children():
             passX = False
             state = agentO.play(state)
-            await messages.append(message.channel.send("```" + str(state) + "```"))
+            messages.append(await message.channel.send("```" + str(state) + "```"))
         else:
             passX = True
             state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
-            await messages.append(message.channel.send(f"{agentO.name} has to pass, it's your turn\n"))
+            messages.append(await message.channel.send(f"{agentO.name} has to pass, it's your turn\n"))
         history.append(state)
         if state.terminal:
             state = passX = passO = None
@@ -126,41 +129,15 @@ async def on_message(message):
                 + f"O has {O:2d} points"
                 + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
                 
-        ## X's turn
-        #if state.find_children():
-        #    passX = False
-        #    state = 
-        #    if noisy: print(state)
-        #else:
-        #    passX = True
-        #    state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
-        #    if noisy: print(f"{agentX.name} has to pass, it's your turn\n")
-        #if state.terminal:
-        #    break
-
-        ## O's turn
-        #if state.find_children():
-        #    passO = False
-        #    state = agentO.play(state)
-        #    if noisy: print(state)
-        #else:
-        #    passO = True
-        #    state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
-        #    if noisy: print(f"{agentO.name} has to pass, it's your turn\n")
-        #if state.terminal:
-        #    print('game finished')
-        #    state = new_reversi_state()
-        #    passX = passO = False
-
     elif message.content == 'raise-exception':
         raise discord.DiscordException
 
-@client.event
-async def on_error(event, *args, **kwargs):
-    with open('err.log', 'a') as f:
-        if event == 'on_message':
-            f.write(f'Unhandled message: {args[0]}\n')
-        else:
-            raise
+#@client.event
+#async def on_error(event, *args, **kwargs):
+#    with open('err.log', 'a') as f:
+#        if event == 'on_message':
+#            f.write(f'Unhandled message: {args[0]}\n')
+#        else:
+#            raise
 
 client.run(TOKEN)
