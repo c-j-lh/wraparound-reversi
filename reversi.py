@@ -188,12 +188,12 @@ class Greedy(AI):
 
 class Greedy2(AI):
     def play(self, state: ReversiState):
-        children = [[kid for kid in child.find_children()] for child in state.find_children()]
-        for kids in children:
+        children = [[[kid for kid in child.find_children()], child] for child in state.find_children()]
+        for kids, child in children:
             kids.sort(reverse=not state.turn, key=lambda state: state.reward())
-        children.sort(reverse=state.turn, key=lambda kids: kids[0].reward())
+        children.sort(reverse=state.turn, key=lambda kids: kids[0][0].reward())
         #print(*[(child, child.reward()) for child in children])
-        return children[0][0]
+        return children[0][1]
 
 class Random(AI):
     def play(self, state: ReversiState):
@@ -204,6 +204,11 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
     state = new_reversi_state()
     if noisy: print(state)
     passX = passO = False
+<<<<<<< HEAD
+=======
+    history = [state]
+    count = 0
+>>>>>>> 4139b0540831901ee7d491c29e569419185154ca
     while not(passX and passO):
         # X's turn
         if state.find_children():
@@ -228,6 +233,7 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
             if noisy: print(f"{agentO.name} has to pass, it's your turn\n")
         if state.terminal:
             break
+        count+=1
 
     O = sum(1 for row in state.board for cell in row if cell is False)
     X = sum(1 for row in state.board for cell in row if cell is True)
