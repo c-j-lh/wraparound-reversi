@@ -2,8 +2,11 @@ todo: undo
 turn number, whose turn
 avail moves
 
-if undo, undo=True?
-delete history? hard tho
-unless i pass history to agentX.play too...
+#delete history? hard tho
+#unless i pass history to agentX.play too...
 
-passX, passO
+show cell played (e.g., 5,5 instead of just next state)
+rama-rama docs
+track which player
+
+passX, passO not done

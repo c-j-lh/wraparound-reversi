@@ -11,6 +11,9 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
 client = discord.Client()
+idle = discord.Activity(type=discord.ActivityType.watching, name=";;help")
+active = discord.Game(name="wraparound reversi")
+#await client.change_presence(activity=activity)
 
 
 
@@ -27,6 +30,7 @@ async def on_ready():
     )
 
     print('Guild members:\n', ', '.join(member.name for member in guild.members))
+    await client.change_presence(activity=idle)
 
 
 
@@ -57,6 +61,7 @@ async def on_message(message):
                 + "```" + str(state) + "```"))
             players[True] = message.author
             print(message.author)
+            await client.change_presence(activity=active)
             return
 
         if inp == 'undo':
@@ -106,14 +111,15 @@ async def on_message(message):
             print('here5', state_)
             messages.append(await message.channel.send("```" + str(state) + "```"))
         if state.terminal:
-            state = passX = passO = None
             O = sum(1 for row in state.board for cell in row if cell is False)
             X = sum(1 for row in state.board for cell in row if cell is True)
-            await message.channel.send(f"X has {X:2d} points"
-                + f"O has {O:2d} points"
+            await message.channel.send(f"X has {X:2d} points\n"
+                + f"O has {O:2d} points\n"
                 + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
+            state = passX = passO = None
+            await client.change_presence(activity=idle)
 
-        # bot O's turn
+        ## bot O's turn
         #if state.find_children():
         #    passX = False
         #    state = agentO.play(state)
@@ -124,12 +130,13 @@ async def on_message(message):
         #    messages.append(await message.channel.send(f"{agentO.name} has to pass, it's your turn\n"))
         #history.append(state)
         #if state.terminal:
-        #    state = passX = passO = None
         #    O = sum(1 for row in state.board for cell in row if cell is False)
         #    X = sum(1 for row in state.board for cell in row if cell is True)
-        #    message.channel.send(f"X has {X:2d} points"
-        #        + f"O has {O:2d} points"
+        #    await message.channel.send(f"X has {X:2d} points\n"
+        #        + f"O has {O:2d} points\n"
         #        + f"{'X' if X>O else 'O'} won by {abs(X-O)} points!")
+        #    state = passX = passO = None
+        #    await client.change_presence(activity=idle)
                 
     elif message.content == 'raise-exception':
         raise discord.DiscordException
