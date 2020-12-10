@@ -1,12 +1,11 @@
-todo: undo
-turn number, whose turn
-avail moves
+# todo.txt
+## general
+show avail. moves
 
-#delete history? hard tho
-#unless i pass history to agentX.play too...
-
-show cell played (e.g., 5,5 instead of just next state)
-rama-rama docs
-track which player
-
+## rama-rama.py
 passX, passO not done
+show turn number, whose turn
+track current players
+`;;help` docs
+
+

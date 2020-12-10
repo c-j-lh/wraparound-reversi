@@ -25,11 +25,14 @@ from copy import deepcopy
 from monte_carlo_tree_search import MCTS, Node
 from abc import ABC, abstractmethod
 
-_TTTB = namedtuple("TicTacToeBoard", "board turn winner terminal")
+_TTTB = namedtuple("TicTacToeBoard", "board turn winner terminal previous")
 
 # Inheriting from a namedtuple is convenient because it makes the class
 # immutable and predefines __init__, __repr__, __hash__, __eq__, and others
 class ReversiState(_TTTB, Node):
+    def __key(self): return (self.board, self.turn)
+    def __hash__(self): return hash(self.__key())
+
     def find_children(state):
         #if state.terminal:  # If the game is finished then no moves can be made
         #    return set()
@@ -54,7 +57,7 @@ class ReversiState(_TTTB, Node):
         children = state.find_children()
         if children:
             return sample(children, 1)[0]
-        return ReversiState(state.board, not state.turn, state.winner, state.terminal)
+        return ReversiState(state.board, not state.turn, state.winner, state.terminal, False)
         #print('==============\n',children)
         #print('==============\n', state)
         #raise Exception("I'm s'posed to pass.")
@@ -120,14 +123,16 @@ class ReversiState(_TTTB, Node):
         winner = _find_winner(new)
         is_terminal = winner is not None
         new = tuple(tuple(row) for row in new)
-        return ReversiState(new, turn, winner, is_terminal) if valid else None
+        return ReversiState(new, turn, winner, is_terminal, (i,j)) if valid else None
 
     def __str__(state):
-        to_char = lambda v: ("X" if v is True else ("O" if v is False else " "))
+        to_char = lambda v: ("X" if v is True else ("O" if v is False else " " if v is None else v))
+        #to_char = lambda v: ("⚫" if v is True else ("⚪" if v is False else " "))
         return (
-            "\n  0 1 2 3 4 5 6 7 \n"
+            (f"after {state.previous if state.previous else 'passing'}\n" if not (state.previous is None) else "")
+            + "  0 1 2 3 4 5 6 7 \n"
             + "\n".join(str(i) + " " + " ".join(map(to_char, row)) for i, row in enumerate(state.board))
-            + "\n"
+            + "\n\n"
         )
 
     def __repr__(state):
@@ -157,6 +162,7 @@ class MCTSAI(AI):
         for _ in range(self.nRollout): self.tree.do_rollout(state)
         return self.tree.choose(state)
 
+        to_char = lambda v: ("⚫" if v is True else ("⚪" if v is False else " "))
 class Human(AI):
     def play(self, state: ReversiState):
         invalid = True
@@ -204,13 +210,11 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
     state = new_reversi_state()
     if noisy: print(state)
     passX = passO = False
-<<<<<<< HEAD
-=======
     history = [state]
     count = 0
->>>>>>> 4139b0540831901ee7d491c29e569419185154ca
     while not(passX and passO):
         # X's turn
+        print(f"=== Turn {count}, X ===")
         if state.find_children():
             passX = False
             state = agentX.play(state)
@@ -219,10 +223,12 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
             passX = True
             state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
             if noisy: print(f"{agentX.name} has to pass, it's your turn\n")
+        history.append(state)
         if state.terminal:
             break
 
         # O's turn
+        print(f"=== Turn {count}, O ===")
         if state.find_children():
             passO = False
             state = agentO.play(state)
@@ -231,6 +237,7 @@ def play_game(agentX=Human("Player X"), agentO=Human("Player O"), noisy:bool=Tru
             passO = True
             state = ReversiState(state.board, not state.turn, state.winner, state.terminal)
             if noisy: print(f"{agentO.name} has to pass, it's your turn\n")
+        history.append(state)
         if state.terminal:
             break
         count+=1
@@ -259,7 +266,7 @@ def new_reversi_state():
     board[3][4] = board[4][3] = False
     board = tuple(tuple(row) for row in board)
     return ReversiState(board=board,
-                        turn=True, winner=None, terminal=False)
+                        turn=True, winner=None, terminal=False, previous=None)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 # bot.py
 import os
 import random
+import asyncio
 
 import discord
 from dotenv import load_dotenv
@@ -11,8 +12,9 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
 client = discord.Client()
-idle = discord.Activity(type=discord.ActivityType.watching, name=";;help")
+idle = discord.Activity(type=discord.ActivityType.watching, name=";;start")
 active = discord.Game(name="wraparound reversi")
+animation_delay = .15
 #await client.change_presence(activity=activity)
 
 
@@ -31,6 +33,10 @@ async def on_ready():
 
     print('Guild members:\n', ', '.join(member.name for member in guild.members))
     await client.change_presence(activity=idle)
+    message = await guild.text_channels[0].send("rama-rama is online now")
+    await asyncio.sleep(2)
+    await message.edit(content="edited")
+
 
 
 
@@ -98,18 +104,32 @@ async def on_message(message):
         if row<0 or row>=8 or col<0 or col>=8 or state.board[row][col] is not None: 
             await message.channel.send('\tcell must be empty')
             return
-        print('here3', row, col)
+        print('heranimation_delay', row, col)
         state_ = state.make_move(row, col)
         if state_ is None:
             await message.channel.send('\tsomething must flip')
             return
         print('here4', state_)
+        oldstate = state
         state = state_
         history.append(state)
         print('here4.5', noisy)
         if noisy:
             print('here5', state_)
-            messages.append(await message.channel.send("```" + str(state) + "```"))
+            board = [list(row) for row in oldstate.board]
+            board[state.previous[0]][state.previous[1]] = oldstate.turn
+            interm = ReversiState(board=board, turn=oldstate.turn, winner=oldstate.winner, 
+                    terminal=oldstate.terminal, previous=state.previous)
+            messages.append(await message.channel.send("```" + str(interm) + "```"))
+            for i in range(8):
+                for j in range(8):
+                    if interm.board[i][j] != state.board[i][j]:
+                        interm.board[i][j] = '~'
+            await asyncio.sleep(animation_delay)
+            await messages[-1].edit(content="```" + str(interm) + "```")
+
+            await asyncio.sleep(animation_delay)
+            await messages[-1].edit(content="```" + str(state) + "```")
         if state.terminal:
             O = sum(1 for row in state.board for cell in row if cell is False)
             X = sum(1 for row in state.board for cell in row if cell is True)
@@ -150,3 +170,5 @@ async def on_message(message):
 #            raise
 
 client.run(TOKEN)
+
+
